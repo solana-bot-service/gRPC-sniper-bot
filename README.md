@@ -61,7 +61,7 @@ A few of the things you can do with Bot:
 ## Usage
 Youtube : [https://www.youtube.com/watch?v=0CEk-Il96-A](https://www.youtube.com/watch?v=0CEk-Il96-A)
 
-![GIF](https://github.com/Xianpwr/gif/raw/main/asi.gif)
+![GIF](https://github.com/Xianpwr/gif/raw/main/as.gif)
 
 - Update `pip` Run the following command to update pip to the latest version
 
