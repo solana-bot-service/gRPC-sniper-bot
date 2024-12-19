@@ -8,7 +8,7 @@ POOL_INFO_LAYOUT = cStruct(
     "instruction" / Int8ul,
     "simulate_type" / Int8ul
 )
-
+ 
 SWAP_LAYOUT = cStruct(
     "instruction" / Int8ul,
     "amount_in" / Int64ul,
