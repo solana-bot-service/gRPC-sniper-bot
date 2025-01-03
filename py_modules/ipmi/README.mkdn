@@ -6,7 +6,7 @@ Python module for ganglia 3.1+
 This module allows you to collect system statistics from IPMI e.g.
 
   ipmi_cpu2_temp = 42.0
-  ipmi_vdimm_ef = 1.52
+  ipmi_vdimm_ef = 1.52 
   ipmi_vdimm_gh = 1.52
   ipmi_vbat = 3.216
   ipmi_12v = 11.978
