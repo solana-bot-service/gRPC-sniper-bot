@@ -9,6 +9,6 @@ def get_pair_address_new_pool(ctx, sig):
         for ins in instructions:
             if "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8" in str(ins.program_id):
                 pair_address = str(ins.accounts[4])
-        return pair_address
+        return pair_address 
     except:
         return pair_address
