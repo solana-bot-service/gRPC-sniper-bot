@@ -3,7 +3,7 @@ async def _create_associated_token_account(token):
     token_associated_account = get_associated_token_address(
         WALLET.public_key,
         PublicKey(token)
-    )
+    ) 
     opts = TxOpts(skip_preflight=True , max_retries=11)
     ata = await SOLANA_CLIENT.get_account_info(PublicKey(token_associated_account))
     if not ata.get('result').get('value'):
