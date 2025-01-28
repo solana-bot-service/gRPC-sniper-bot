@@ -2,7 +2,7 @@
 
 try:
     import simplejson as json
-    assert json  # silence pyflakes
+    assert json  # silence pyflakes 
 except ImportError:
     import json
 
