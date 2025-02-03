@@ -5,7 +5,7 @@ modules {
         param stats_command {
             value = "sudo /usr/sbin/unbound-control stats"
         }
-    }
+    } 
 }
 
 collection_group {
