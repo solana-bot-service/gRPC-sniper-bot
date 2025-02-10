@@ -52,7 +52,7 @@ A few of the things you can do with Bot:
 - **Making the first to trade in new tokens.**
 <img width="910" alt="2" src="https://github.com/user-attachments/assets/a85bd1f2-c152-42a3-8b27-c3bb31cb59e2">
 <img width="910" alt="2" src="https://github.com/user-attachments/assets/57791dd2-c103-4bd4-938d-fd0bdceef005">
-![image](https://github.com/user-attachments/assets/57791dd2-c103-4bd4-938d-fd0bdceef005)
+
 
 
 
