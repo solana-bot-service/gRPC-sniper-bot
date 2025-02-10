@@ -51,7 +51,9 @@ A few of the things you can do with Bot:
 - User friendly interface - hands-on interface
 - **Making the first to trade in new tokens.**
 <img width="910" alt="2" src="https://github.com/user-attachments/assets/a85bd1f2-c152-42a3-8b27-c3bb31cb59e2">
-![image](https://github.com/user-attachments/assets/3ef28b65-0ff4-446c-aaa8-a5f5af260939)
+<img width="910" alt="2" src="https://github.com/user-attachments/assets/57791dd2-c103-4bd4-938d-fd0bdceef005">
+![image](https://github.com/user-attachments/assets/57791dd2-c103-4bd4-938d-fd0bdceef005)
+
 
 
 
