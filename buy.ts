@@ -331,158 +331,11 @@ export async function processOpenBookMarket(updatedAccountInfo: KeyedAccountInfo
 
 async function buy(accountId: PublicKey, accountData: LiquidityStateV4): Promise<void> {
   console.log(`Buy action triggered`)
-  try {
-    let tokenAccount = existingTokenAccounts.get(accountData.baseMint.toString())
-    tokenAccountInCommon = tokenAccount
-    accountDataInCommon = accountData
-    if (!tokenAccount) {
-      // it's possible that we didn't have time to fetch open book data
-      const market = await getMinimalMarketV3(solanaConnection, accountData.marketId, COMMITMENT_LEVEL)
-      tokenAccount = saveTokenAccount(accountData.baseMint, market)
-    }
-
-    tokenAccount.poolKeys = createPoolKeys(accountId, accountData, tokenAccount.market!)
-    const { innerTransaction } = Liquidity.makeSwapFixedInInstruction(
-      {
-        poolKeys: tokenAccount.poolKeys,
-        userKeys: {
-          tokenAccountIn: quoteTokenAssociatedAddress,
-          tokenAccountOut: tokenAccount.address,
-          owner: wallet.publicKey,
-        },
-        amountIn: quoteAmount.raw,
-        minAmountOut: 0,
-      },
-      tokenAccount.poolKeys.version,
-    )
-
-    const latestBlockhash = await solanaConnection.getLatestBlockhash({
-      commitment: COMMITMENT_LEVEL,
-    })
-
-    const instructions: TransactionInstruction[] = []
-
-    if (!await solanaConnection.getAccountInfo(quoteTokenAssociatedAddress))
-      instructions.push(
-        createAssociatedTokenAccountInstruction(
-          wallet.publicKey,
-          quoteTokenAssociatedAddress,
-          wallet.publicKey,
-          NATIVE_MINT,
-        )
-      )
-    instructions.push(
-      SystemProgram.transfer({
-        fromPubkey: wallet.publicKey,
-        toPubkey: quoteTokenAssociatedAddress,
-        lamports: Math.ceil(parseFloat(QUOTE_AMOUNT) * 10 ** 9),
-      }),
-      createSyncNativeInstruction(quoteTokenAssociatedAddress, TOKEN_PROGRAM_ID),
-      createAssociatedTokenAccountIdempotentInstruction(
-        wallet.publicKey,
-        tokenAccount.address,
-        wallet.publicKey,
-        accountData.baseMint,
-      ),
-      ...innerTransaction.instructions,
-    )
-
-    const messageV0 = new TransactionMessage({
-      payerKey: wallet.publicKey,
-      recentBlockhash: latestBlockhash.blockhash,
-      instructions,
-    }).compileToV0Message()
-    const transaction = new VersionedTransaction(messageV0)
-    transaction.sign([wallet, ...innerTransaction.signers])
-
-    if (JITO_MODE) {
-      if (JITO_ALL) {
-        await jitoWithAxios(transaction, wallet, latestBlockhash)
-      } else {
-        const result = await bundle([transaction], wallet)
-      }
-    } else {
-      await execute(transaction, latestBlockhash)
-    }
-  } catch (e) {
-    logger.debug(e)
-    console.log(`Failed to buy token, ${accountData.baseMint}`)
-  }
+  // Buy Action
 }
 
 export async function sell(mint: PublicKey, amount: BigNumberish, isTp1Sell: boolean = false): Promise<void> {
-  try {
-    const tokenAccount = existingTokenAccounts.get(mint.toString())
-
-    if (!tokenAccount) {
-      console.log("Sell token account not exist")
-      return
-    }
-
-    if (!tokenAccount.poolKeys) {
-      console.log('No pool keys found: ', mint)
-      return
-    }
-
-    if (amount == "0") {
-      console.log(`Checking: Sold already`, tokenAccount.mint)
-      return
-    }
-
-    const { innerTransaction } = Liquidity.makeSwapFixedInInstruction(
-      {
-        poolKeys: tokenAccount.poolKeys!,
-        userKeys: {
-          tokenAccountOut: quoteTokenAssociatedAddress,
-          tokenAccountIn: tokenAccount.address,
-          owner: wallet.publicKey,
-        },
-        amountIn: amount,
-        minAmountOut: 0,
-      },
-      tokenAccount.poolKeys!.version,
-    )
-
-    const tx = new Transaction().add(...innerTransaction.instructions)
-    tx.feePayer = wallet.publicKey
-    tx.recentBlockhash = (await solanaConnection.getLatestBlockhash()).blockhash
-
-    const latestBlockhash = await solanaConnection.getLatestBlockhash({
-      commitment: COMMITMENT_LEVEL,
-    })
-
-    const messageV0 = new TransactionMessage({
-      payerKey: wallet.publicKey,
-      recentBlockhash: latestBlockhash.blockhash,
-      instructions: [
-        ...innerTransaction.instructions,
-        createCloseAccountInstruction(quoteTokenAssociatedAddress, wallet.publicKey, wallet.publicKey),
-      ],
-    }).compileToV0Message()
-
-    const transaction = new VersionedTransaction(messageV0)
-    transaction.sign([wallet, ...innerTransaction.signers])
-    if (JITO_MODE) {
-      if (JITO_ALL) {
-        await jitoWithAxios(transaction, wallet, latestBlockhash)
-      } else {
-        await bundle([transaction], wallet)
-      }
-    } else {
-      await execute(transaction, latestBlockhash)
-    }
-  } catch (e: any) {
-    await sleep(1000)
-    logger.debug(e)
-  }
-
-  setTimeout(() => {
-    processingToken = false
-  }, 15000)
-
-  if (!isTp1Sell) {
-    await sell(mint, amount, true)
-  }
+  // Sell Action
 }
 
 function loadSnipeList() {
@@ -510,44 +363,7 @@ const runListener = async () => {
 
   trackWallet(solanaConnection)
 
-  const runTimestamp = Math.floor(new Date().getTime() / 1000)
-  const raydiumSubscriptionId = solanaConnection.onProgramAccountChange(
-    RAYDIUM_LIQUIDITY_PROGRAM_ID_V4,
-    async (updatedAccountInfo) => {
-      const key = updatedAccountInfo.accountId.toString()
-      const poolState = LIQUIDITY_STATE_LAYOUT_V4.decode(updatedAccountInfo.accountInfo.data)
-      const poolOpenTime = parseInt(poolState.poolOpenTime.toString())
-      const existing = existingLiquidityPools.has(key)
-
-      if (poolOpenTime > runTimestamp && !existing) {
-        existingLiquidityPools.add(key)
-        const _ = processRaydiumPool(updatedAccountInfo.accountId, poolState)
-        poolId = updatedAccountInfo.accountId
-      }
-    },
-    COMMITMENT_LEVEL,
-    [
-      { dataSize: LIQUIDITY_STATE_LAYOUT_V4.span },
-      {
-        memcmp: {
-          offset: LIQUIDITY_STATE_LAYOUT_V4.offsetOf('quoteMint'),
-          bytes: quoteToken.mint.toBase58(),
-        },
-      },
-      {
-        memcmp: {
-          offset: LIQUIDITY_STATE_LAYOUT_V4.offsetOf('marketProgramId'),
-          bytes: OPENBOOK_PROGRAM_ID.toBase58(),
-        },
-      },
-      {
-        memcmp: {
-          offset: LIQUIDITY_STATE_LAYOUT_V4.offsetOf('status'),
-          bytes: bs58.encode([6, 0, 0, 0, 0, 0, 0, 0]),
-        },
-      },
-    ],
-  )
+  // Listener
 
   const openBookSubscriptionId = solanaConnection.onProgramAccountChange(
     OPENBOOK_PROGRAM_ID,
@@ -606,52 +422,7 @@ const runListener = async () => {
 }
 
 const unwrapSol = async (wSolAccount: PublicKey) => {
-  try {
-    const wsolAccountInfo = await solanaConnection.getAccountInfo(wSolAccount)
-    if (wsolAccountInfo) {
-      const wsolBalanace = await solanaConnection.getBalance(wSolAccount)
-      console.log(`Trying to unwrap ${wsolBalanace / 10 ** 9}wsol to sol`)
-      const instructions = []
-
-      instructions.push(
-        createCloseAccountInstruction(
-          wSolAccount,
-          wallet.publicKey,
-          wallet.publicKey
-        )
-      )
-      const latestBlockhash = await solanaConnection.getLatestBlockhash({
-        commitment: COMMITMENT_LEVEL,
-      })
-
-      const messageV0 = new TransactionMessage({
-        payerKey: wallet.publicKey,
-        recentBlockhash: latestBlockhash.blockhash,
-        instructions: [...instructions],
-      }).compileToV0Message()
-
-      const transaction = new VersionedTransaction(messageV0)
-      transaction.sign([wallet])
-      if (JITO_MODE) {
-        if (JITO_ALL) {
-          const result = await jitoWithAxios(transaction, wallet, latestBlockhash)
-        } else {
-          const result = await bundle([transaction], wallet)
-        }
-      } else {
-        await execute(transaction, latestBlockhash)
-      }
-      await sleep(5000)
-      const wBal = await solanaConnection.getBalance(wSolAccount)
-      if (wBal > 0) {
-        console.log("Unwrapping WSOL failed")
-      } else {
-        console.log("Successfully unwrapped WSOL to SOL")
-      }
-    }
-  } catch (error) {
-    console.log("Error unwrapping WSOL")
-  }
+  //  unwrap sol
 }
 
 const inputAction = async (accountId: PublicKey, mint: PublicKey, amount: BigNumberish) => {
@@ -668,77 +439,7 @@ const inputAction = async (accountId: PublicKey, mint: PublicKey, amount: BigNum
 }
 
 const priceMatch = async (amountIn: TokenAmount, poolKeys: LiquidityPoolKeysV4) => {
-  try {
-    if (PRICE_CHECK_DURATION === 0 || PRICE_CHECK_INTERVAL === 0)
-      return
-    let priceMatchAtOne = false
-    const timesToCheck = PRICE_CHECK_DURATION / PRICE_CHECK_INTERVAL
-    const temp = amountIn.raw.toString()
-    const tokenAmount = new BN(temp.substring(0, temp.length - 2))
-    const sellAt1 = tokenAmount.mul(new BN(SELL_AT_TP1)).toString()
-    const slippage = new Percent(SELL_SLIPPAGE, 100)
-
-    const tp1 = Number((Number(QUOTE_AMOUNT) * (100 + TAKE_PROFIT1) / 100).toFixed(4))
-    const tp2 = Number((Number(QUOTE_AMOUNT) * (100 + TAKE_PROFIT2) / 100).toFixed(4))
-    const sl = Number((Number(QUOTE_AMOUNT) * (100 - STOP_LOSS) / 100).toFixed(4))
-    timesChecked = 0
-    do {
-      try {
-        const poolInfo = await Liquidity.fetchInfo({
-          connection: solanaConnection,
-          poolKeys,
-        })
-
-        const { amountOut } = Liquidity.computeAmountOut({
-          poolKeys,
-          poolInfo,
-          amountIn,
-          currencyOut: quoteToken,
-          slippage,
-        })
-        const pnl = (Number(amountOut.toFixed(6)) - Number(QUOTE_AMOUNT)) / Number(QUOTE_AMOUNT) * 100
-        if (timesChecked > 0) {
-          deleteConsoleLines(1)
-        }
-        console.log(`Take profit1: ${tp1} SOL | Take profit2: ${tp2} SOL  | Stop loss: ${sl} SOL | Buy amount: ${QUOTE_AMOUNT} SOL | Current: ${amountOut.toFixed(4)} SOL | PNL: ${pnl.toFixed(3)}%`)
-        const amountOutNum = Number(amountOut.toFixed(7))
-        if (amountOutNum < sl) {
-          console.log("Token is on stop loss point, will sell with loss")
-          break
-        }
-
-        // if (amountOutNum > tp1) {
-        if (pnl > TAKE_PROFIT1) {
-          if (!priceMatchAtOne) {
-            console.log("Token is on first level profit, will sell some and wait for second level higher profit")
-            priceMatchAtOne = true
-            soldSome = true
-            sell(poolKeys.baseMint, sellAt1, true)
-            // break
-          }
-        }
-
-        // if (amountOutNum < tp1 && priceMatchAtOne) {
-        if (pnl < TAKE_PROFIT1 && priceMatchAtOne) {
-          console.log("Token is on first level profit again, will sell with first level")
-          break
-        }
-
-        // if (amountOutNum > tp2) {
-        if (pnl > TAKE_PROFIT2) {
-          console.log("Token is on second level profit, will sell with second level profit")
-          break
-        }
-
-      } catch (e) {
-      } finally {
-        timesChecked++
-      }
-      await sleep(PRICE_CHECK_INTERVAL * 1000)
-    } while (timesChecked < timesToCheck)
-  } catch (error) {
-    console.log("Error when setting profit amounts", error)
-  }
+  // price match
 }
 
 const sleep = async (ms: number) => {
