@@ -6,7 +6,7 @@ modules {
             value = "sudo /usr/sbin/unbound-control stats"
         }
     } 
-}
+} 
 
 collection_group {
     collect_every = 30
