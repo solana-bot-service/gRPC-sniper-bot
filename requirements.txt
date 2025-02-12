@@ -1,6 +1,0 @@
-solders
-solana
-base58
-requests
-colorama
- 
